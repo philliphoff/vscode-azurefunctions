@@ -5,12 +5,13 @@
 
 import { type AzureResource, type AzureResourceBranchDataProvider } from "@microsoft/vscode-azureresources-api";
 import { EventEmitter, type ProviderResult, type TreeItem } from "vscode";
-import { type DurableTaskSchedulerResource, type DurableTaskSchedulerClient } from "./DurableTaskSchedulerClient";
+import { type DurableTaskSchedulerClient, type DurableTaskSchedulerResource } from "./DurableTaskSchedulerClient";
 import { type DurableTaskSchedulerModel } from "./DurableTaskSchedulerModel";
 import { DurableTaskSchedulerResourceModel } from "./DurableTaskSchedulerResourceModel";
 
 export class DurableTaskSchedulerDataBranchProvider implements AzureResourceBranchDataProvider<DurableTaskSchedulerModel> {
     private readonly onDidChangeTreeDataEventEmitter = new EventEmitter<DurableTaskSchedulerModel | DurableTaskSchedulerModel[] | undefined | null | void>();
+    private readonly _knownSchedulers = new Map<string, DurableTaskSchedulerResourceModel>();
 
     constructor(private readonly schedulerClient: DurableTaskSchedulerClient) {
     }
@@ -19,6 +20,10 @@ export class DurableTaskSchedulerDataBranchProvider implements AzureResourceBran
 
     getChildren(element: DurableTaskSchedulerModel): ProviderResult<DurableTaskSchedulerModel[]> {
         return element.getChildren();
+    }
+
+    getKnownSchedulers(): DurableTaskSchedulerResourceModel[] {
+        return Array.from(this._knownSchedulers.values());
     }
 
     async getResourceItem(azureResource: AzureResource): Promise<DurableTaskSchedulerResourceModel> {
@@ -32,11 +37,17 @@ export class DurableTaskSchedulerDataBranchProvider implements AzureResourceBran
                 azureResource.name);
         }
 
-        return new DurableTaskSchedulerResourceModel(
+        const model = new DurableTaskSchedulerResourceModel(
             azureResource,
             schedulerResource,
             this.schedulerClient,
-            model => this.onDidChangeTreeDataEventEmitter.fire(model));
+            m => this.onDidChangeTreeDataEventEmitter.fire(m));
+
+        if (azureResource.id) {
+            this._knownSchedulers.set(azureResource.id, model);
+        }
+
+        return model;
     }
 
     getTreeItem(element: DurableTaskSchedulerModel): TreeItem | Thenable<TreeItem> {

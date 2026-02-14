@@ -43,6 +43,20 @@
         }
     },
     "contributes": {
+        "languageModelTools": [
+            {
+                "name": "list_durabletaskschedulers",
+                "displayName": "List Durable Task Schedulers",
+                "modelDescription": "Returns a list of known Durable Task Scheduler instances, including both locally running emulators (via Docker) and Azure-deployed schedulers that have been loaded in the Azure Resources tree view. Each instance includes its name, endpoint URL, source (emulator or azure), task hubs, and optional dashboard URL or Azure resource ID.",
+                "tags": [
+                    "azure",
+                    "durable-task-scheduler",
+                    "durable-functions"
+                ],
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "listDurableTaskSchedulers"
+            }
+        ],
         "x-azResources": {
             "azure": {
                 "branches": [

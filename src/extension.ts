@@ -32,6 +32,7 @@ import { registerFuncHostTaskEvents } from './funcCoreTools/funcHostTask';
 import { validateFuncCoreToolsInstalled } from './funcCoreTools/validateFuncCoreToolsInstalled';
 import { validateFuncCoreToolsIsLatest } from './funcCoreTools/validateFuncCoreToolsIsLatest';
 import { getResourceGroupsApi } from './getExtensionApi';
+import { DurableTaskSchedulerTool } from './lmTools/DurableTaskSchedulerTool';
 import { CentralTemplateProvider } from './templates/CentralTemplateProvider';
 import { ShellContainerClient } from './tree/durableTaskScheduler/ContainerClient';
 import { HttpDurableTaskSchedulerClient } from './tree/durableTaskScheduler/DurableTaskSchedulerClient';
@@ -130,6 +131,10 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         ext.rgApiV2 = azureResourcesApi;
 
         azureResourcesApi.resources.registerAzureResourceBranchDataProvider('DurableTaskScheduler' as AzExtResourceType, dataBranchProvider);
+
+        context.subscriptions.push(
+            vscode.lm.registerTool('list_durabletaskschedulers', new DurableTaskSchedulerTool(emulatorClient, dataBranchProvider)),
+        );
 
         azureResourcesApi.resources.registerWorkspaceResourceProvider(new DurableTaskSchedulerWorkspaceResourceProvider());
         azureResourcesApi.resources.registerWorkspaceResourceBranchDataProvider(
