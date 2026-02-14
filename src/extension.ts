@@ -133,7 +133,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         azureResourcesApi.resources.registerAzureResourceBranchDataProvider('DurableTaskScheduler' as AzExtResourceType, dataBranchProvider);
 
         context.subscriptions.push(
-            vscode.lm.registerTool('list_durabletaskschedulers', new DurableTaskSchedulerTool(emulatorClient, dataBranchProvider)),
+            vscode.lm.registerTool('list_durabletaskschedulers', new DurableTaskSchedulerTool(emulatorClient, dataBranchProvider, schedulerClient)),
         );
 
         azureResourcesApi.resources.registerWorkspaceResourceProvider(new DurableTaskSchedulerWorkspaceResourceProvider());
