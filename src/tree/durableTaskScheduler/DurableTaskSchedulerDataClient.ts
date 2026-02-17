@@ -43,9 +43,32 @@ interface OrchestrationQueryResponse {
     }
 }
 
+export interface OrchestrationMetadata {
+    instanceId: string;
+    name: string;
+    orchestrationStatus: string;
+    createdTimestamp: string;
+    lastUpdatedTimestamp: string;
+    executionId: string;
+    completedTimestamp?: string;
+    tags?: { [key: string]: string };
+}
+
+export interface OrchestrationHistoryEvent {
+    eventId: number;
+    timestamp: string;
+    [key: string]: unknown;
+}
+
+interface OrchestrationHistoryResponse {
+    history: OrchestrationHistoryEvent[];
+}
+
 export interface DurableTaskSchedulerDataClient {
     queryOrchestrations(options: DurableTaskSchedulerDataClientOptions): Promise<OrchestrationQueryResponse>;
+    getOrchestrationMetadata(options: DurableTaskSchedulerDataClientOptions & { instanceId: string }): Promise<OrchestrationMetadata>;
     getOrchestrationPayloads(options: DurableTaskSchedulerDataClientOptions & { instanceId: string }): Promise<OrchestrationPayloads>;
+    getOrchestrationHistory(options: DurableTaskSchedulerDataClientOptions & { instanceId: string, executionId: string }): Promise<OrchestrationHistoryEvent[]>;
 }
 
 export class HttpDurableTaskSchedulerDataClient implements DurableTaskSchedulerDataClient {
@@ -54,37 +77,15 @@ export class HttpDurableTaskSchedulerDataClient implements DurableTaskSchedulerD
 
         const url = `${endpoint.replace(/\/+$/, '')}/v1/taskhubs/orchestrations/query`;
 
-        const body = {
-        };
+        return await this.fetchJson<OrchestrationQueryResponse>(url, taskHub, accessToken, 'POST', {});
+    }
 
-        let response: Response;
+    async getOrchestrationMetadata(options: DurableTaskSchedulerDataClientOptions & { instanceId: string }): Promise<OrchestrationMetadata> {
+        const { endpoint, taskHub, accessToken, instanceId } = options;
 
-        try {
-            response = await fetch(
-                url,
-                {
-                    body: JSON.stringify(body),
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // eslint-disable-next-line @typescript-eslint/naming-convention
-                        'x-taskhub': taskHub,
-                        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
-                    }
-                }
-            );
+        const url = `${endpoint.replace(/\/+$/, '')}/v1/taskhubs/orchestrations/${encodeURIComponent(instanceId)}`;
 
-        } catch (error) {
-            throw new Error(localize('queryOrchestrationsFailed', 'Failed to query orchestrations: {0}', error instanceof Error ? error.message : String(error)));
-        }
-
-        if (!response.ok) {
-            throw new Error(localize('queryOrchestrationsFailed', 'Failed to query orchestrations ({0}): {1}', response.status, response.statusText));
-        }
-
-        const result = await response.json() as OrchestrationQueryResponse;
-
-        return result;
+        return await this.fetchJson<OrchestrationMetadata>(url, taskHub, accessToken);
     }
 
     async getOrchestrationPayloads(options: DurableTaskSchedulerDataClientOptions & { instanceId: string }): Promise<OrchestrationPayloads> {
@@ -92,30 +93,61 @@ export class HttpDurableTaskSchedulerDataClient implements DurableTaskSchedulerD
 
         const url = `${endpoint.replace(/\/+$/, '')}/v1/taskhubs/orchestrations/${encodeURIComponent(instanceId)}/payloads`;
 
+        return await this.fetchJson<OrchestrationPayloads>(url, taskHub, accessToken);
+    }
+
+    async getOrchestrationHistory(options: DurableTaskSchedulerDataClientOptions & { instanceId: string, executionId?: string }): Promise<OrchestrationHistoryEvent[]> {
+        const { endpoint, taskHub, accessToken, instanceId } = options;
+        let { executionId } = options;
+
+        if (!executionId) {
+            // If executionId is not provided, we need to fetch the metadata first to get the latest executionId
+            const metadata = await this.getOrchestrationMetadata({ endpoint, taskHub, accessToken, instanceId });
+            if (!metadata.executionId) {
+                throw new Error(localize('executionIdNotFound', 'Execution ID not found for instance "{0}".', instanceId));
+            }
+            executionId = metadata.executionId;
+        }
+
+        const url = `${endpoint.replace(/\/+$/, '')}/v1/taskhubs/orchestrations/${encodeURIComponent(instanceId)}/executions/${encodeURIComponent(executionId)}/history`;
+
+        const result = await this.fetchJson<OrchestrationHistoryResponse>(url, taskHub, accessToken);
+
+        return result.history;
+    }
+
+    private async fetchJson<T>(url: string, taskHub: string, accessToken?: string, method?: string, body?: unknown): Promise<T> {
+        const headers: Record<string, string> = {
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            'x-taskhub': taskHub,
+        };
+
+        if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+
+        const init: RequestInit = {
+            method: method ?? 'GET',
+            headers,
+        };
+
+        if (body !== undefined) {
+            headers['Content-Type'] = 'application/json';
+            init.body = JSON.stringify(body);
+        }
+
         let response: Response;
 
         try {
-            response = await fetch(
-                url,
-                {
-                    method: 'GET',
-                    headers: {
-                        // eslint-disable-next-line @typescript-eslint/naming-convention
-                        'x-taskhub': taskHub,
-                        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
-                    }
-                }
-            );
+            response = await fetch(url, init);
         } catch (error) {
-            throw new Error(localize('getOrchestrationPayloadsFailed', 'Failed to get orchestration payloads: {0}', error instanceof Error ? error.message : String(error)));
+            throw new Error(localize('fetchFailed', 'Request to {0} failed: {1}', url, error instanceof Error ? error.message : String(error)));
         }
 
         if (!response.ok) {
-            throw new Error(localize('getOrchestrationPayloadsFailed', 'Failed to get orchestration payloads ({0}): {1}', response.status, response.statusText));
+            throw new Error(localize('fetchFailed', 'Request to {0} failed ({1}): {2}', url, response.status, response.statusText));
         }
 
-        const result = await response.json() as OrchestrationPayloads;
-
-        return result;
+        return await response.json() as T;
     }
 }

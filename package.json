@@ -118,6 +118,40 @@
                 ],
                 "canBeReferencedInPrompt": true,
                 "toolReferenceName": "getOrchestration"
+            },
+            {
+                "name": "get_durabletaskscheduler_orchestration_history",
+                "displayName": "Get Durable Task Scheduler Orchestration History",
+                "modelDescription": "Gets the event history of a specific orchestration instance from a Durable Task Scheduler task hub. The history shows the sequence of activities, sub-orchestrations, timers, and events that occurred during the orchestration's execution. Accepts the resourceId of a task hub (as returned by the list_durabletaskschedulers tool) and the instanceId of the orchestration (as returned by the query_durabletaskscheduler_orchestrations tool). For Azure-hosted task hubs (non-emulator), you MUST supply an accessToken with Read.Metadata scope. Obtain it by running `az account get-access-token --resource https://durabletask.io --scope https://durabletask.io/Read.Metadata --query accessToken --output tsv` in the terminal. Emulator task hubs do not require an access token.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "taskHubResourceId": {
+                            "type": "string",
+                            "description": "The resource ID of the task hub. Use the resourceId from a task hub returned by the list_durabletaskschedulers tool."
+                        },
+                        "instanceId": {
+                            "type": "string",
+                            "description": "The instance ID of the orchestration whose history to retrieve. Use the instanceId from the query_durabletaskscheduler_orchestrations tool."
+                        },
+                        "accessToken": {
+                            "type": "string",
+                            "description": "An access token for the Durable Task Scheduler data plane with Read.Metadata scope. Required for Azure-hosted task hubs. Obtain by running: az account get-access-token --resource https://durabletask.io --scope https://durabletask.io/Read.Metadata --query accessToken --output tsv"
+                        }
+                    },
+                    "required": [
+                        "taskHubResourceId",
+                        "instanceId"
+                    ]
+                },
+                "tags": [
+                    "azure",
+                    "durable-task-scheduler",
+                    "durable-functions",
+                    "orchestrations"
+                ],
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "getOrchestrationHistory"
             }
         ],
         "x-azResources": {
