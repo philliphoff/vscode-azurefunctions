@@ -19,6 +19,16 @@ export interface OrchestrationInstance {
     lastUpdatedTime: string;
 }
 
+export interface OrchestrationPayloads {
+    customStatus?: string;
+    input?: string;
+    output?: string;
+    failureDetails?: {
+        errorMessage: string;
+        errorType: string;
+    }
+}
+
 interface OrchestrationQueryResponse {
     orchestrations: OrchestrationInstance[];
     totalCount: number;
@@ -35,6 +45,7 @@ interface OrchestrationQueryResponse {
 
 export interface DurableTaskSchedulerDataClient {
     queryOrchestrations(options: DurableTaskSchedulerDataClientOptions): Promise<OrchestrationQueryResponse>;
+    getOrchestrationPayloads(options: DurableTaskSchedulerDataClientOptions & { instanceId: string }): Promise<OrchestrationPayloads>;
 }
 
 export class HttpDurableTaskSchedulerDataClient implements DurableTaskSchedulerDataClient {
@@ -72,6 +83,38 @@ export class HttpDurableTaskSchedulerDataClient implements DurableTaskSchedulerD
         }
 
         const result = await response.json() as OrchestrationQueryResponse;
+
+        return result;
+    }
+
+    async getOrchestrationPayloads(options: DurableTaskSchedulerDataClientOptions & { instanceId: string }): Promise<OrchestrationPayloads> {
+        const { endpoint, taskHub, accessToken, instanceId } = options;
+
+        const url = `${endpoint.replace(/\/+$/, '')}/v1/taskhubs/orchestrations/${encodeURIComponent(instanceId)}/payloads`;
+
+        let response: Response;
+
+        try {
+            response = await fetch(
+                url,
+                {
+                    method: 'GET',
+                    headers: {
+                        // eslint-disable-next-line @typescript-eslint/naming-convention
+                        'x-taskhub': taskHub,
+                        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+                    }
+                }
+            );
+        } catch (error) {
+            throw new Error(localize('getOrchestrationPayloadsFailed', 'Failed to get orchestration payloads: {0}', error instanceof Error ? error.message : String(error)));
+        }
+
+        if (!response.ok) {
+            throw new Error(localize('getOrchestrationPayloadsFailed', 'Failed to get orchestration payloads ({0}): {1}', response.status, response.statusText));
+        }
+
+        const result = await response.json() as OrchestrationPayloads;
 
         return result;
     }
