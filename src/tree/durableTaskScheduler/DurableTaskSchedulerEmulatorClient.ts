@@ -4,11 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Disposable, type Event, EventEmitter, Uri } from "vscode";
-import { type ContainerClient } from "./ContainerClient";
 import { getWorkspaceSetting } from "../../vsCodeConfig/settings";
+import { type ContainerClient } from "./ContainerClient";
 
 export interface DurableTaskSchedulerEmulator {
     dashboardEndpoint: Uri;
+    httpApiEndpoint: Uri;
     id: string;
     name: string;
     schedulerEndpoint: Uri;
@@ -83,6 +84,7 @@ export class DockerDurableTaskSchedulerEmulatorClient extends Disposable impleme
 
         return emulatorContainers.map(container => ({
             dashboardEndpoint: Uri.parse(`http://localhost:${container.ports[8082]}`),
+            httpApiEndpoint: Uri.parse(`http://localhost:${container.ports[8081]}`),
             id: container.id,
             name: container.name,
             schedulerEndpoint: Uri.parse(`http://localhost:${container.ports[8080]}`),

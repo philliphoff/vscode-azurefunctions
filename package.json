@@ -55,6 +55,31 @@
                 ],
                 "canBeReferencedInPrompt": true,
                 "toolReferenceName": "listDurableTaskSchedulers"
+            },
+            {
+                "name": "query_durabletaskscheduler_orchestrations",
+                "displayName": "Query Durable Task Scheduler Orchestrations",
+                "modelDescription": "Queries orchestration instances from a Durable Task Scheduler task hub. Accepts the resourceId of a task hub (as returned by the list_durabletaskschedulers tool) and returns a list of orchestration instances with their instanceId, name, runtimeStatus, createdTime, and lastUpdatedTime.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "taskHubResourceId": {
+                            "type": "string",
+                            "description": "The resource ID of the task hub to query. Use the resourceId from a task hub returned by the list_durabletaskschedulers tool."
+                        }
+                    },
+                    "required": [
+                        "taskHubResourceId"
+                    ]
+                },
+                "tags": [
+                    "azure",
+                    "durable-task-scheduler",
+                    "durable-functions",
+                    "orchestrations"
+                ],
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "queryOrchestrations"
             }
         ],
         "x-azResources": {

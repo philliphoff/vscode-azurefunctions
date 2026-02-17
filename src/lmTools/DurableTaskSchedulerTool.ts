@@ -11,6 +11,7 @@ import { type DurableTaskSchedulerEmulatorClient } from '../tree/durableTaskSche
 
 interface DurableTaskSchedulerTaskHub {
     name: string;
+    resourceId: string;
     connectionString: string;
     dashboardUrl?: string;
 }
@@ -50,6 +51,7 @@ export class DurableTaskSchedulerTool implements vscode.LanguageModelTool<void> 
                     source: 'emulator',
                     taskHubs: emulator.taskHubs.map(name => ({
                         name,
+                        resourceId: `emulator/${emulator.name}/${name}`,
                         connectionString: `${schedulerConnectionString};TaskHub=${name}`,
                         dashboardUrl: emulator.dashboardEndpoint.toString(),
                     })),
@@ -75,6 +77,7 @@ export class DurableTaskSchedulerTool implements vscode.LanguageModelTool<void> 
                     );
                     taskHubs = taskHubResources.map(th => ({
                         name: th.name,
+                        resourceId: th.id,
                         connectionString: `${schedulerConnectionString};TaskHub=${th.name}`,
                         dashboardUrl: th.properties.dashboardUrl,
                     }));
