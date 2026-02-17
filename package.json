@@ -59,13 +59,17 @@
             {
                 "name": "query_durabletaskscheduler_orchestrations",
                 "displayName": "Query Durable Task Scheduler Orchestrations",
-                "modelDescription": "Queries orchestration instances from a Durable Task Scheduler task hub. Accepts the resourceId of a task hub (as returned by the list_durabletaskschedulers tool) and returns a list of orchestration instances with their instanceId, name, runtimeStatus, createdTime, and lastUpdatedTime.",
+                "modelDescription": "Queries orchestration instances from a Durable Task Scheduler task hub. Accepts the resourceId of a task hub (as returned by the list_durabletaskschedulers tool) and returns a list of orchestration instances with their instanceId, name, runtimeStatus, createdTime, and lastUpdatedTime. For Azure-hosted task hubs (non-emulator), you MUST supply an accessToken. Obtain it by running `az account get-access-token --resource https://durabletask.io --scope https://durabletask.io/Read.Metadata --query accessToken --output tsv` in the terminal. Emulator task hubs do not require an access token.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "taskHubResourceId": {
                             "type": "string",
                             "description": "The resource ID of the task hub to query. Use the resourceId from a task hub returned by the list_durabletaskschedulers tool."
+                        },
+                        "accessToken": {
+                            "type": "string",
+                            "description": "An access token for the Durable Task Scheduler data plane. Required for Azure-hosted task hubs. Obtain by running: az account get-access-token --resource https://durabletask.io --scope https://durabletask.io/Read.Metadata --query accessToken --output tsv"
                         }
                     },
                     "required": [

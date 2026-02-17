@@ -11,6 +11,7 @@ import { type DurableTaskSchedulerEmulatorClient } from '../tree/durableTaskSche
 
 interface QueryOrchestrationsInput {
     taskHubResourceId: string;
+    accessToken?: string;
 }
 
 export class DurableTaskSchedulerQueryOrchestrationsTool implements vscode.LanguageModelTool<QueryOrchestrationsInput> {
@@ -24,9 +25,9 @@ export class DurableTaskSchedulerQueryOrchestrationsTool implements vscode.Langu
         options: vscode.LanguageModelToolInvocationOptions<QueryOrchestrationsInput>,
         _token: vscode.CancellationToken,
     ): Promise<vscode.LanguageModelToolResult> {
-        const { taskHubResourceId } = options.input;
+        const { taskHubResourceId, accessToken } = options.input;
 
-        const resolved = await this.resolveTaskHub(taskHubResourceId);
+        const resolved = await this.resolveTaskHub(taskHubResourceId, accessToken);
 
         const orchestrations = await this.dataClient.queryOrchestrations({
             endpoint: resolved.endpoint,
@@ -48,7 +49,7 @@ export class DurableTaskSchedulerQueryOrchestrationsTool implements vscode.Langu
         };
     }
 
-    private async resolveTaskHub(resourceId: string): Promise<{ endpoint: string; taskHubName: string; accessToken?: string }> {
+    private async resolveTaskHub(resourceId: string, accessToken?: string): Promise<{ endpoint: string; taskHubName: string; accessToken?: string }> {
         // Emulator resource IDs: emulator/<scheduler_name>/<taskhub_name>
         const emulatorMatch = /^emulator\/(.+)\/(.+)$/.exec(resourceId);
         if (emulatorMatch) {
@@ -83,17 +84,15 @@ export class DurableTaskSchedulerQueryOrchestrationsTool implements vscode.Langu
             }
 
             const httpApiEndpoint = new URL(endpoint);
-            httpApiEndpoint.port = '8081';
 
-            const authSession = await scheduler.subscription.authentication.getSession();
-            if (!authSession) {
-                throw new Error(localize('noAuthSession', 'Unable to obtain an authentication session.'));
+            if (!accessToken) {
+                throw new Error(localize('noAccessToken', 'An access token is required for Azure-hosted task hubs. Obtain one by running: az account get-access-token --resource https://durabletask.io --scope https://durabletask.io/Read.Metadata --query accessToken --output tsv'));
             }
 
             return {
                 endpoint: httpApiEndpoint.toString(),
                 taskHubName,
-                accessToken: authSession.accessToken,
+                accessToken,
             };
         }
 

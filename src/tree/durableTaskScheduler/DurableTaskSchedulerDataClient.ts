@@ -20,39 +20,52 @@ export interface OrchestrationInstance {
 }
 
 interface OrchestrationQueryResponse {
-    value: OrchestrationInstance[];
-    continuationToken?: string;
+    orchestrations: OrchestrationInstance[];
+    totalCount: number;
+    trivia?: {
+        earliestTimestamp: string;
+        latestTimestamp: string;
+        totalCount: number;
+        completedCount: number;
+        runningCount: number;
+        failedCount: number;
+        pendingCount: number;
+    }
 }
 
 export interface DurableTaskSchedulerDataClient {
-    queryOrchestrations(options: DurableTaskSchedulerDataClientOptions): Promise<OrchestrationInstance[]>;
+    queryOrchestrations(options: DurableTaskSchedulerDataClientOptions): Promise<OrchestrationQueryResponse>;
 }
 
 export class HttpDurableTaskSchedulerDataClient implements DurableTaskSchedulerDataClient {
-    async queryOrchestrations(options: DurableTaskSchedulerDataClientOptions): Promise<OrchestrationInstance[]> {
+    async queryOrchestrations(options: DurableTaskSchedulerDataClientOptions): Promise<OrchestrationQueryResponse> {
         const { endpoint, taskHub, accessToken } = options;
 
         const url = `${endpoint.replace(/\/+$/, '')}/v1/taskhubs/orchestrations/query`;
 
         const body = {
-            filter: {
-            },
-            fields: 'instanceId,name',
         };
 
-        const response = await fetch(
-            url,
-            {
-                body: JSON.stringify(body),
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
-                    'x-taskhub': taskHub,
-                    ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+        let response: Response;
+
+        try {
+            response = await fetch(
+                url,
+                {
+                    body: JSON.stringify(body),
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // eslint-disable-next-line @typescript-eslint/naming-convention
+                        'x-taskhub': taskHub,
+                        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+                    }
                 }
-            }
-        );
+            );
+
+        } catch (error) {
+            throw new Error(localize('queryOrchestrationsFailed', 'Failed to query orchestrations: {0}', error instanceof Error ? error.message : String(error)));
+        }
 
         if (!response.ok) {
             throw new Error(localize('queryOrchestrationsFailed', 'Failed to query orchestrations ({0}): {1}', response.status, response.statusText));
@@ -60,6 +73,6 @@ export class HttpDurableTaskSchedulerDataClient implements DurableTaskSchedulerD
 
         const result = await response.json() as OrchestrationQueryResponse;
 
-        return result.value ?? [];
+        return result;
     }
 }
