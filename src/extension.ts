@@ -138,19 +138,19 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         azureResourcesApi.resources.registerAzureResourceBranchDataProvider('DurableTaskScheduler' as AzExtResourceType, dataBranchProvider);
 
         context.subscriptions.push(
-            vscode.lm.registerTool('list_durabletaskschedulers', new DurableTaskSchedulerTool(emulatorClient, dataBranchProvider, schedulerClient)),
+            vscode.lm.registerTool('list_durabletaskschedulers', new DurableTaskSchedulerTool(emulatorClient, schedulerClient)),
         );
 
         context.subscriptions.push(
-            vscode.lm.registerTool('query_durabletaskscheduler_orchestrations', new DurableTaskSchedulerQueryOrchestrationsTool(emulatorClient, dataBranchProvider, dataClient)),
+            vscode.lm.registerTool('query_durabletaskscheduler_orchestrations', new DurableTaskSchedulerQueryOrchestrationsTool(emulatorClient, schedulerClient, dataClient)),
         );
 
         context.subscriptions.push(
-            vscode.lm.registerTool('get_durabletaskscheduler_orchestration', new DurableTaskSchedulerGetOrchestrationPayloadsTool(emulatorClient, dataBranchProvider, dataClient)),
+            vscode.lm.registerTool('get_durabletaskscheduler_orchestration', new DurableTaskSchedulerGetOrchestrationPayloadsTool(emulatorClient, schedulerClient, dataClient)),
         );
 
         context.subscriptions.push(
-            vscode.lm.registerTool('get_durabletaskscheduler_orchestration_history', new DurableTaskSchedulerGetOrchestrationHistoryTool(emulatorClient, dataBranchProvider, dataClient)),
+            vscode.lm.registerTool('get_durabletaskscheduler_orchestration_history', new DurableTaskSchedulerGetOrchestrationHistoryTool(emulatorClient, schedulerClient, dataClient)),
         );
 
         azureResourcesApi.resources.registerWorkspaceResourceProvider(new DurableTaskSchedulerWorkspaceResourceProvider());

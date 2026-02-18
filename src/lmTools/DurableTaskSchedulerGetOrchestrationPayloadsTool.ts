@@ -4,8 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
+import { ext } from '../extensionVariables';
 import { localize } from '../localize';
-import { type DurableTaskSchedulerDataBranchProvider } from '../tree/durableTaskScheduler/DurableTaskSchedulerDataBranchProvider';
+import { type DurableTaskSchedulerClient } from '../tree/durableTaskScheduler/DurableTaskSchedulerClient';
 import { type DurableTaskSchedulerDataClient } from '../tree/durableTaskScheduler/DurableTaskSchedulerDataClient';
 import { type DurableTaskSchedulerEmulatorClient } from '../tree/durableTaskScheduler/DurableTaskSchedulerEmulatorClient';
 
@@ -18,7 +19,7 @@ interface GetOrchestrationInput {
 export class DurableTaskSchedulerGetOrchestrationPayloadsTool implements vscode.LanguageModelTool<GetOrchestrationInput> {
     constructor(
         private readonly emulatorClient: DurableTaskSchedulerEmulatorClient,
-        private readonly dataBranchProvider: DurableTaskSchedulerDataBranchProvider,
+        private readonly schedulerClient: DurableTaskSchedulerClient,
         private readonly dataClient: DurableTaskSchedulerDataClient,
     ) { }
 
@@ -68,19 +69,24 @@ export class DurableTaskSchedulerGetOrchestrationPayloadsTool implements vscode.
         }
 
         // Azure resource IDs: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DurableTask/schedulers/{scheduler}/taskHubs/{taskHub}
-        const azureMatch = /\/subscriptions\/[^/]+\/resourceGroups\/[^/]+\/providers\/Microsoft\.DurableTask\/schedulers\/([^/]+)\/task[Hh]ubs\/([^/]+)/i.exec(resourceId);
+        const azureMatch = /\/subscriptions\/([^/]+)\/resourceGroups\/([^/]+)\/providers\/Microsoft\.DurableTask\/schedulers\/([^/]+)\/task[Hh]ubs\/([^/]+)/i.exec(resourceId);
         if (azureMatch) {
-            const [, schedulerName] = azureMatch;
-            const taskHubName = azureMatch[2];
+            const [, subscriptionId, resourceGroup, schedulerName] = azureMatch;
+            const taskHubName = azureMatch[4];
 
-            // Find the scheduler in known schedulers to get endpoint and subscription
-            const knownSchedulers = this.dataBranchProvider.getKnownSchedulers();
-            const scheduler = knownSchedulers.find(s => s.name === schedulerName);
-            if (!scheduler) {
-                throw new Error(localize('schedulerNotFound', 'Scheduler "{0}" not found. It may not have been loaded in the Azure Resources tree view.', schedulerName));
+            // Find the matching subscription to get authentication
+            const subscriptions = await ext.rgApi.getSubscriptions(true);
+            const subscription = subscriptions.find(s => s.subscriptionId === subscriptionId);
+            if (!subscription) {
+                throw new Error(localize('subscriptionNotFound', 'Subscription "{0}" not found. You may not be signed in.', subscriptionId));
             }
 
-            const endpoint = scheduler.endpointUrl;
+            const scheduler = await this.schedulerClient.getScheduler(subscription, resourceGroup, schedulerName);
+            if (!scheduler) {
+                throw new Error(localize('schedulerNotFound', 'Scheduler "{0}" not found.', schedulerName));
+            }
+
+            const endpoint = scheduler.properties.endpoint;
             if (!endpoint) {
                 throw new Error(localize('schedulerNoEndpoint', 'Scheduler "{0}" does not have an endpoint URL.', schedulerName));
             }
