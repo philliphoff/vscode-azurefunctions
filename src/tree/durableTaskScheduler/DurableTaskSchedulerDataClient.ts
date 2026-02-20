@@ -5,10 +5,12 @@
 
 import { localize } from '../../localize';
 
+export type AccessTokenProvider = (scope: string) => Promise<string | undefined>;
+
 interface DurableTaskSchedulerDataClientOptions {
     endpoint: string;
     taskHub: string;
-    accessToken?: string;
+    accessTokenProvider?: AccessTokenProvider;
 }
 
 export interface OrchestrationInstance {
@@ -68,41 +70,41 @@ export interface DurableTaskSchedulerDataClient {
     queryOrchestrations(options: DurableTaskSchedulerDataClientOptions): Promise<OrchestrationQueryResponse>;
     getOrchestrationMetadata(options: DurableTaskSchedulerDataClientOptions & { instanceId: string }): Promise<OrchestrationMetadata>;
     getOrchestrationPayloads(options: DurableTaskSchedulerDataClientOptions & { instanceId: string }): Promise<OrchestrationPayloads>;
-    getOrchestrationHistory(options: DurableTaskSchedulerDataClientOptions & { instanceId: string, executionId: string }): Promise<OrchestrationHistoryEvent[]>;
+    getOrchestrationHistory(options: DurableTaskSchedulerDataClientOptions & { instanceId: string, executionId?: string }): Promise<OrchestrationHistoryEvent[]>;
 }
 
 export class HttpDurableTaskSchedulerDataClient implements DurableTaskSchedulerDataClient {
     async queryOrchestrations(options: DurableTaskSchedulerDataClientOptions): Promise<OrchestrationQueryResponse> {
-        const { endpoint, taskHub, accessToken } = options;
+        const { endpoint, taskHub } = options;
 
         const url = `${endpoint.replace(/\/+$/, '')}/v1/taskhubs/orchestrations/query`;
 
-        return await this.fetchJson<OrchestrationQueryResponse>(url, taskHub, accessToken, 'POST', {});
+        return await this.fetchJson<OrchestrationQueryResponse>(url, taskHub, 'https://durabletask.io/Read.Metadata', options.accessTokenProvider, 'POST', {});
     }
 
     async getOrchestrationMetadata(options: DurableTaskSchedulerDataClientOptions & { instanceId: string }): Promise<OrchestrationMetadata> {
-        const { endpoint, taskHub, accessToken, instanceId } = options;
+        const { endpoint, taskHub, instanceId } = options;
 
         const url = `${endpoint.replace(/\/+$/, '')}/v1/taskhubs/orchestrations/${encodeURIComponent(instanceId)}`;
 
-        return await this.fetchJson<OrchestrationMetadata>(url, taskHub, accessToken);
+        return await this.fetchJson<OrchestrationMetadata>(url, taskHub, 'https://durabletask.io/Read.Metadata', options.accessTokenProvider);
     }
 
     async getOrchestrationPayloads(options: DurableTaskSchedulerDataClientOptions & { instanceId: string }): Promise<OrchestrationPayloads> {
-        const { endpoint, taskHub, accessToken, instanceId } = options;
+        const { endpoint, taskHub, instanceId } = options;
 
         const url = `${endpoint.replace(/\/+$/, '')}/v1/taskhubs/orchestrations/${encodeURIComponent(instanceId)}/payloads`;
 
-        return await this.fetchJson<OrchestrationPayloads>(url, taskHub, accessToken);
+        return await this.fetchJson<OrchestrationPayloads>(url, taskHub, 'https://durabletask.io/Read.All', options.accessTokenProvider);
     }
 
     async getOrchestrationHistory(options: DurableTaskSchedulerDataClientOptions & { instanceId: string, executionId?: string }): Promise<OrchestrationHistoryEvent[]> {
-        const { endpoint, taskHub, accessToken, instanceId } = options;
+        const { endpoint, taskHub, instanceId } = options;
         let { executionId } = options;
 
         if (!executionId) {
             // If executionId is not provided, we need to fetch the metadata first to get the latest executionId
-            const metadata = await this.getOrchestrationMetadata({ endpoint, taskHub, accessToken, instanceId });
+            const metadata = await this.getOrchestrationMetadata({ endpoint, taskHub, accessTokenProvider: options.accessTokenProvider, instanceId });
             if (!metadata.executionId) {
                 throw new Error(localize('executionIdNotFound', 'Execution ID not found for instance "{0}".', instanceId));
             }
@@ -111,19 +113,22 @@ export class HttpDurableTaskSchedulerDataClient implements DurableTaskSchedulerD
 
         const url = `${endpoint.replace(/\/+$/, '')}/v1/taskhubs/orchestrations/${encodeURIComponent(instanceId)}/executions/${encodeURIComponent(executionId)}/history`;
 
-        const result = await this.fetchJson<OrchestrationHistoryResponse>(url, taskHub, accessToken);
+        const result = await this.fetchJson<OrchestrationHistoryResponse>(url, taskHub, 'https://durabletask.io/Read.Metadata', options.accessTokenProvider);
 
         return result.history;
     }
 
-    private async fetchJson<T>(url: string, taskHub: string, accessToken?: string, method?: string, body?: unknown): Promise<T> {
+    private async fetchJson<T>(url: string, taskHub: string, scope: string, accessTokenProvider?: AccessTokenProvider, method?: string, body?: unknown): Promise<T> {
         const headers: Record<string, string> = {
             // eslint-disable-next-line @typescript-eslint/naming-convention
             'x-taskhub': taskHub,
         };
 
-        if (accessToken) {
-            headers['Authorization'] = `Bearer ${accessToken}`;
+        if (accessTokenProvider) {
+            const accessToken = await accessTokenProvider(scope);
+            if (accessToken) {
+                headers['Authorization'] = `Bearer ${accessToken}`;
+            }
         }
 
         const init: RequestInit = {

@@ -49,6 +49,7 @@ import { verifyVSCodeConfigOnActivate } from './vsCodeConfig/verifyVSCodeConfigO
 import { type AzureFunctionsExtensionApi } from './vscode-azurefunctions.api';
 import { listLocalFunctions } from './workspace/listLocalFunctions';
 import { listLocalProjects } from './workspace/listLocalProjects';
+import { AzureCliAccessTokenProvider } from './lmTools/DurableTaskSchedulerAccessTokenProvider';
 
 const emulatorClient = new DockerDurableTaskSchedulerEmulatorClient(new ShellContainerClient());
 
@@ -137,20 +138,22 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         azureResourcesApi.resources.registerAzureResourceBranchDataProvider('DurableTaskScheduler' as AzExtResourceType, dataBranchProvider);
 
+        const accessTokenProvider = AzureCliAccessTokenProvider();
+
         context.subscriptions.push(
             vscode.lm.registerTool('list_durabletaskschedulers', new DurableTaskSchedulerTool(emulatorClient, schedulerClient)),
         );
 
         context.subscriptions.push(
-            vscode.lm.registerTool('query_durabletaskscheduler_orchestrations', new DurableTaskSchedulerQueryOrchestrationsTool(emulatorClient, schedulerClient, dataClient)),
+            vscode.lm.registerTool('query_durabletaskscheduler_orchestrations', new DurableTaskSchedulerQueryOrchestrationsTool(accessTokenProvider, emulatorClient, schedulerClient, dataClient)),
         );
 
         context.subscriptions.push(
-            vscode.lm.registerTool('get_durabletaskscheduler_orchestration', new DurableTaskSchedulerGetOrchestrationPayloadsTool(emulatorClient, schedulerClient, dataClient)),
+            vscode.lm.registerTool('get_durabletaskscheduler_orchestration', new DurableTaskSchedulerGetOrchestrationPayloadsTool(accessTokenProvider, emulatorClient, schedulerClient, dataClient)),
         );
 
         context.subscriptions.push(
-            vscode.lm.registerTool('get_durabletaskscheduler_orchestration_history', new DurableTaskSchedulerGetOrchestrationHistoryTool(emulatorClient, schedulerClient, dataClient)),
+            vscode.lm.registerTool('get_durabletaskscheduler_orchestration_history', new DurableTaskSchedulerGetOrchestrationHistoryTool(accessTokenProvider, emulatorClient, schedulerClient, dataClient)),
         );
 
         azureResourcesApi.resources.registerWorkspaceResourceProvider(new DurableTaskSchedulerWorkspaceResourceProvider());
