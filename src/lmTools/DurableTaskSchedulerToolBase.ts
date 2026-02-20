@@ -67,7 +67,7 @@ export abstract class DurableTaskSchedulerToolBase {
             return {
                 endpoint: httpApiEndpoint.toString(),
                 taskHubName,
-                accessTokenProvider: this.accessTokenProvider,
+                accessTokenProvider: scope => this.accessTokenProvider('https://durabletask.io', scope),
             };
         }
 
